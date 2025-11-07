@@ -1,0 +1,33 @@
+# Compiled binaries
+localbin
+*.o
+*.out
+*.exe
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Static analysis
+*.plist
+
+# OS files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Test files
+test_*
+*.test
+
+# Backup files
+*.bak
+*.backup

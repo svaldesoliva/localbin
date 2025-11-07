@@ -1,24 +1,38 @@
-# Makefile para localbin
+# Makefile para localbin v2.0 (Modular)
 
 CC = clang
-CFLAGS = -Wall -Wextra -O2 -std=c11
+CFLAGS = -Wall -Wextra -O2 -std=c11 -I./include
+LDFLAGS = -framework Security -framework CoreFoundation
 TARGET = localbin
-SRC = main.c
 INSTALL_DIR = $(HOME)/.localbin
+
+# Archivos fuente
+SRC_DIR = src
+SRCS = $(SRC_DIR)/main.c \
+       $(SRC_DIR)/core.c \
+       $(SRC_DIR)/utils.c \
+       $(SRC_DIR)/metadata.c \
+       $(SRC_DIR)/checksum.c \
+       $(SRC_DIR)/commands.c
+
+OBJS = $(SRCS:.c=.o)
 
 # Detectar arquitectura en macOS
 ARCH := $(shell uname -m)
 
-.PHONY: all clean install uninstall help test
+.PHONY: all clean install uninstall help test debug
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
 	@echo "✅ Compilado: $(TARGET)"
 
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(OBJS)
 	@echo "🧹 Limpiado"
 
 install: $(TARGET)
@@ -36,9 +50,21 @@ uninstall:
 	@echo "🗑️  Desinstalado $(TARGET)"
 
 # Compilar con símbolos de debug
-debug: CFLAGS += -g -DDEBUG
+debug: CFLAGS += -g -DDEBUG -O0
 debug: clean $(TARGET)
 	@echo "🐛 Compilado en modo debug"
+
+# Análisis estático
+analyze:
+	@echo "🔍 Ejecutando análisis estático..."
+	clang --analyze $(CFLAGS) $(SRCS)
+	@echo "✅ Análisis completo"
+
+# Formato de código
+format:
+	@echo "🎨 Formateando código..."
+	clang-format -i $(SRCS) include/*.h
+	@echo "✅ Código formateado"
 
 test: $(TARGET)
 	@echo "🧪 Probando localbin..."
@@ -47,7 +73,7 @@ test: $(TARGET)
 	@./$(TARGET) doctor
 
 help:
-	@echo "Makefile para localbin"
+	@echo "Makefile para localbin v2.0"
 	@echo ""
 	@echo "Objetivos disponibles:"
 	@echo "  make           - Compila el programa"
@@ -56,4 +82,6 @@ help:
 	@echo "  make clean     - Elimina archivos compilados"
 	@echo "  make debug     - Compila con símbolos de debug"
 	@echo "  make test      - Prueba el programa compilado"
+	@echo "  make analyze   - Ejecuta análisis estático"
+	@echo "  make format    - Formatea el código"
 	@echo "  make help      - Muestra esta ayuda"
