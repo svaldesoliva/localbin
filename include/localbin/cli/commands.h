@@ -1,10 +1,11 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#include "core.h"
+#include "localbin/core/core.h"
 
 // Comandos principales
 void cmd_install(const char *src_path, const char *version);
+void cmd_install_with_options(const char *src_path, const char *version, const char *as_name, const char *alias, const char *pre_hook, const char *post_hook);
 void cmd_remove(const char *name);
 void cmd_list(const ListOptions *opts);
 void cmd_info(const char *name);
@@ -37,7 +38,7 @@ void cmd_deps_list(const char *program);
 
 // Comandos avanzados
 void cmd_rollback(void);
-void cmd_self_update(void);
+void cmd_self_update(int manual_mode);
 void cmd_completion(const char *shell);
 
 // Ayuda

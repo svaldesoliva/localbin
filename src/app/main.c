@@ -1,5 +1,5 @@
-#include "core.h"
-#include "commands.h"
+#include "localbin/core/core.h"
+#include "localbin/cli/commands.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -14,16 +14,34 @@ int main(int argc, char *argv[]) {
     // Comandos principales
     if (strcmp(cmd, "install") == 0) {
         if (argc < 3) {
-            fprintf(stderr, "Uso: %s install <archivo> [--version VERSION]\n", argv[0]);
+            fprintf(stderr, "Uso: %s install <archivo|url> [--version VERSION] [--as NOMBRE] [--alias NOMBRE] [--pre-update-hook SCRIPT] [--post-update-hook SCRIPT]\n", argv[0]);
             return 1;
         }
         
         const char *version = NULL;
-        if (argc >= 5 && strcmp(argv[3], "--version") == 0) {
-            version = argv[4];
+        const char *as_name = NULL;
+        const char *alias = NULL;
+        const char *pre_hook = NULL;
+        const char *post_hook = NULL;
+
+        for (int i = 3; i < argc; i++) {
+            if (strcmp(argv[i], "--version") == 0 && i + 1 < argc) {
+                version = argv[++i];
+            } else if (strcmp(argv[i], "--as") == 0 && i + 1 < argc) {
+                as_name = argv[++i];
+            } else if (strcmp(argv[i], "--alias") == 0 && i + 1 < argc) {
+                alias = argv[++i];
+            } else if (strcmp(argv[i], "--pre-update-hook") == 0 && i + 1 < argc) {
+                pre_hook = argv[++i];
+            } else if (strcmp(argv[i], "--post-update-hook") == 0 && i + 1 < argc) {
+                post_hook = argv[++i];
+            } else {
+                fprintf(stderr, "Opción inválida para install: %s\n", argv[i]);
+                return 1;
+            }
         }
         
-        cmd_install(argv[2], version);
+        cmd_install_with_options(argv[2], version, as_name, alias, pre_hook, post_hook);
     }
     else if (strcmp(cmd, "update") == 0) {
         if (argc != 4) {
@@ -88,6 +106,18 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(cmd, "setup") == 0) {
         cmd_setup();
+    }
+    else if (strcmp(cmd, "self-update") == 0 || strcmp(cmd, "selfupdate") == 0) {
+        int manual_mode = 0;
+        for (int i = 2; i < argc; i++) {
+            if (strcmp(argv[i], "--manual") == 0) {
+                manual_mode = 1;
+            } else {
+                fprintf(stderr, "Opción inválida para self-update: %s\n", argv[i]);
+                return 1;
+            }
+        }
+        cmd_self_update(manual_mode);
     }
     else if (strcmp(cmd, "version") == 0 || strcmp(cmd, "-v") == 0 || strcmp(cmd, "--version") == 0) {
         print_version();

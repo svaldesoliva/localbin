@@ -170,7 +170,7 @@ void warn_path(void) {
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
     
-    printf("\n⚠️  ADVERTENCIA: %s no está en tu PATH\n", install_dir);
+    printf("\n  ADVERTENCIA: %s no está en tu PATH\n", install_dir);
     printf("   Los programas instalados no serán accesibles globalmente.\n");
     printf("   \n");
     printf("   Para corregir, ejecuta:\n");
@@ -229,8 +229,8 @@ void install_program(const char *src_path) {
         return;
     }
     
-    printf("✅ Instalado: %s\n", base);
-    printf("   Ruta: %s\n", dest_path);
+    printf("Instalado: %s\n", base);
+    printf("Ruta: %s\n", dest_path);
     
     free(src_copy);
     
@@ -329,7 +329,7 @@ void list_programs(void) {
     }
     
     // Imprimir header
-    printf("📦 Programas instalados en %s:\n\n", install_dir);
+    printf(" Programas instalados en %s:\n\n", install_dir);
     
     printf("┌");
     for (size_t i = 0; i < max_name_len + 2; i++) printf("─");
@@ -377,12 +377,12 @@ void remove_program(const char *name) {
         return;
     }
     
-    printf("🗑️  Eliminado: %s\n", name);
+    printf("  Eliminado: %s\n", name);
 }
 
 // Verificar estado del entorno
 void check_environment(void) {
-    printf("🔍 Verificando configuración de localbin...\n\n");
+    printf(" Verificando configuración de localbin...\n\n");
     
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
@@ -390,17 +390,17 @@ void check_environment(void) {
     // 1. Verificar si el directorio existe
     struct stat st;
     if (stat(install_dir, &st) == 0) {
-        printf("✅ Directorio existe: %s\n", install_dir);
+        printf(" Directorio existe: %s\n", install_dir);
     } else {
-        printf("❌ Directorio no existe: %s\n", install_dir);
+        printf(" Directorio no existe: %s\n", install_dir);
         printf("   Se creará automáticamente al instalar el primer programa\n");
     }
     
     // 2. Verificar PATH
     if (check_path()) {
-        printf("✅ Directorio está en PATH\n");
+        printf(" Directorio está en PATH\n");
     } else {
-        printf("❌ Directorio NO está en PATH\n");
+        printf(" Directorio NO está en PATH\n");
         printf("\n   Para corregir, agrega esta línea a tu shell config:\n");
         
         const char *shell = getenv("SHELL");
@@ -429,24 +429,24 @@ void check_environment(void) {
             }
         }
         closedir(dir);
-        printf("✅ Programas instalados: %d\n", count);
+        printf(" Programas instalados: %d\n", count);
     }
     
     // 4. Verificar permisos del directorio
     if (stat(install_dir, &st) == 0) {
         if (st.st_mode & S_IWUSR) {
-            printf("✅ Permisos de escritura: OK\n");
+            printf(" Permisos de escritura: OK\n");
         } else {
-            printf("❌ Sin permisos de escritura en %s\n", install_dir);
+            printf(" Sin permisos de escritura en %s\n", install_dir);
         }
     }
     
     // 5. Verificar shell
     const char *shell = getenv("SHELL");
     if (shell) {
-        printf("✅ Shell detectado: %s\n", shell);
+        printf(" Shell detectado: %s\n", shell);
     } else {
-        printf("⚠️  No se pudo detectar el shell\n");
+        printf("  No se pudo detectar el shell\n");
     }
     
     printf("\n");
@@ -454,7 +454,7 @@ void check_environment(void) {
 
 // Configuración automática del PATH
 void auto_configure_path(void) {
-    printf("🔧 Configurando PATH automáticamente...\n\n");
+    printf(" Configurando PATH automáticamente...\n\n");
     
     const char *shell = getenv("SHELL");
     const char *config_file = NULL;
@@ -464,7 +464,7 @@ void auto_configure_path(void) {
     } else if (shell && strstr(shell, "bash")) {
         config_file = "/.bash_profile";
     } else {
-        fprintf(stderr, "❌ Shell no soportado para configuración automática\n");
+        fprintf(stderr, " Shell no soportado para configuración automática\n");
         fprintf(stderr, "   Shells soportados: zsh, bash\n");
         return;
     }
@@ -486,7 +486,7 @@ void auto_configure_path(void) {
         fclose(f);
         
         if (found) {
-            printf("✅ PATH ya está configurado en %s\n", config_path);
+            printf(" PATH ya está configurado en %s\n", config_path);
             printf("   No se requiere ninguna acción adicional\n");
             mark_configured();
             return;
@@ -496,7 +496,7 @@ void auto_configure_path(void) {
     // Agregar configuración
     f = fopen(config_path, "a");
     if (!f) {
-        fprintf(stderr, "❌ Error: No se pudo abrir %s\n", config_path);
+        fprintf(stderr, " Error: No se pudo abrir %s\n", config_path);
         return;
     }
     
@@ -504,7 +504,7 @@ void auto_configure_path(void) {
     fprintf(f, "export PATH=\"$HOME/.localbin:$PATH\"\n");
     fclose(f);
     
-    printf("✅ PATH configurado en %s\n", config_path);
+    printf(" PATH configurado en %s\n", config_path);
     printf("   \n");
     printf("   Para aplicar los cambios, ejecuta:\n");
     printf("   source %s\n", config_path);

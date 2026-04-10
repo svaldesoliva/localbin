@@ -1,5 +1,5 @@
-#include "metadata.h"
-#include "utils.h"
+#include "localbin/storage/metadata.h"
+#include "localbin/core/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +32,9 @@ char* metadata_to_json(const ProgramMetadata *meta) {
     pos += snprintf(json + pos, size - pos, "  \"name\": \"%s\",\n", meta->name);
     pos += snprintf(json + pos, size - pos, "  \"version\": \"%s\",\n", meta->version);
     pos += snprintf(json + pos, size - pos, "  \"source_path\": \"%s\",\n", meta->source_path);
+    pos += snprintf(json + pos, size - pos, "  \"alias\": \"%s\",\n", meta->alias);
+    pos += snprintf(json + pos, size - pos, "  \"pre_update_hook\": \"%s\",\n", meta->pre_update_hook);
+    pos += snprintf(json + pos, size - pos, "  \"post_update_hook\": \"%s\",\n", meta->post_update_hook);
     pos += snprintf(json + pos, size - pos, "  \"checksum_sha256\": \"%s\",\n", meta->checksum_sha256);
     pos += snprintf(json + pos, size - pos, "  \"install_date\": %ld,\n", meta->install_date);
     pos += snprintf(json + pos, size - pos, "  \"update_date\": %ld,\n", meta->update_date);
@@ -71,6 +74,21 @@ int metadata_from_json(const char *json, ProgramMetadata *meta) {
     // Buscar source_path
     if ((p = strstr(json, "\"source_path\":")) != NULL) {
         sscanf(p, "\"source_path\": \"%1023[^\"]\"", meta->source_path);
+    }
+
+    // Buscar alias
+    if ((p = strstr(json, "\"alias\":")) != NULL) {
+        sscanf(p, "\"alias\": \"%255[^\"]\"", meta->alias);
+    }
+
+    // Buscar pre_update_hook
+    if ((p = strstr(json, "\"pre_update_hook\":")) != NULL) {
+        sscanf(p, "\"pre_update_hook\": \"%1023[^\"]\"", meta->pre_update_hook);
+    }
+
+    // Buscar post_update_hook
+    if ((p = strstr(json, "\"post_update_hook\":")) != NULL) {
+        sscanf(p, "\"post_update_hook\": \"%1023[^\"]\"", meta->post_update_hook);
     }
     
     // Buscar checksum
@@ -264,6 +282,12 @@ int metadata_update_field(const char *program_name, const char *field, const cha
         strncpy(meta.source_path, value, sizeof(meta.source_path) - 1);
     } else if (strcmp(field, "checksum") == 0) {
         strncpy(meta.checksum_sha256, value, sizeof(meta.checksum_sha256) - 1);
+    } else if (strcmp(field, "alias") == 0) {
+        strncpy(meta.alias, value, sizeof(meta.alias) - 1);
+    } else if (strcmp(field, "pre_update_hook") == 0) {
+        strncpy(meta.pre_update_hook, value, sizeof(meta.pre_update_hook) - 1);
+    } else if (strcmp(field, "post_update_hook") == 0) {
+        strncpy(meta.post_update_hook, value, sizeof(meta.post_update_hook) - 1);
     }
     // ... más campos según sea necesario
     

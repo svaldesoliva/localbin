@@ -20,6 +20,9 @@ typedef struct {
     char name[256];
     char version[MAX_VERSION_LEN];
     char source_path[MAX_PATH];
+    char alias[256];
+    char pre_update_hook[MAX_PATH];
+    char post_update_hook[MAX_PATH];
     char checksum_sha256[65];  // SHA256 = 64 chars hex + \0
     time_t install_date;
     time_t update_date;

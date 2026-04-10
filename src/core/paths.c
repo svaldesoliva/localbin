@@ -1,5 +1,5 @@
-#include "core.h"
-#include "utils.h"
+#include "localbin/core/core.h"
+#include "localbin/core/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

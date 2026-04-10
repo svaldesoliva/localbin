@@ -1,5 +1,5 @@
 # Compiled binaries
-localbin
+/localbin
 *.o
 *.out
 *.exe

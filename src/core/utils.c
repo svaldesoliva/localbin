@@ -1,5 +1,5 @@
-#include "utils.h"
-#include "core.h"
+#include "localbin/core/utils.h"
+#include "localbin/core/core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -124,9 +124,14 @@ void get_shell_config_file(char *buf, size_t size) {
         config_file = "/.zshrc";
     } else if (shell && strstr(shell, "bash")) {
         config_file = "/.bash_profile";
+    } else if (shell && strstr(shell, "fish")) {
+        config_file = "/.config/fish/config.fish";
+    } else if (shell && (strstr(shell, "csh") || strstr(shell, "tcsh"))) {
+        config_file = "/.cshrc";
+    } else if (shell && (strstr(shell, "ksh") || strstr(shell, "dash") || strstr(shell, "sh"))) {
+        config_file = "/.profile";
     } else {
-        buf[0] = '\0';
-        return;
+        config_file = "/.profile";
     }
     
     snprintf(buf, size, "%s%s", get_home_dir(), config_file);
@@ -146,7 +151,7 @@ void warn_path(void) {
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
     
-    printf("\n⚠️  ADVERTENCIA: %s no está en tu PATH\n", install_dir);
+    printf("\n  ADVERTENCIA: %s no está en tu PATH\n", install_dir);
     printf("   Los programas instalados no serán accesibles globalmente.\n");
     printf("   \n");
     printf("   Para corregir, ejecuta:\n");
@@ -158,8 +163,16 @@ void warn_path(void) {
     } else if (shell && strstr(shell, "bash")) {
         printf("   echo 'export PATH=\"$HOME/.localbin:$PATH\"' >> ~/.bash_profile\n");
         printf("   source ~/.bash_profile\n");
+    } else if (shell && strstr(shell, "fish")) {
+        printf("   mkdir -p ~/.config/fish\n");
+        printf("   echo 'set -gx PATH $HOME/.localbin $PATH' >> ~/.config/fish/config.fish\n");
+        printf("   source ~/.config/fish/config.fish\n");
+    } else if (shell && (strstr(shell, "csh") || strstr(shell, "tcsh"))) {
+        printf("   echo 'setenv PATH \"$HOME/.localbin:$PATH\"' >> ~/.cshrc\n");
+        printf("   source ~/.cshrc\n");
     } else {
-        printf("   export PATH=\"$HOME/.localbin:$PATH\"\n");
+        printf("   echo 'export PATH=\"$HOME/.localbin:$PATH\"' >> ~/.profile\n");
+        printf("   source ~/.profile\n");
     }
     
     printf("\n   O ejecuta: localbin setup (para configuración automática)\n");

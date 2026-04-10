@@ -1,7 +1,7 @@
 #ifndef METADATA_H
 #define METADATA_H
 
-#include "core.h"
+#include "localbin/core/core.h"
 
 // Funciones de gestión de metadata
 int metadata_init(void);

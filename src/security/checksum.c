@@ -1,6 +1,6 @@
-#include "checksum.h"
-#include "core.h"
-#include "metadata.h"
+#include "localbin/security/checksum.h"
+#include "localbin/core/core.h"
+#include "localbin/storage/metadata.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,7 +65,7 @@ int checksum_verify_all(void) {
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
     
-    printf("🔍 Verificando integridad de %d programa(s)...\n\n", count);
+    printf(" Verificando integridad de %d programa(s)...\n\n", count);
     
     for (int i = 0; i < count; i++) {
         char program_path[MAX_PATH];
@@ -74,12 +74,12 @@ int checksum_verify_all(void) {
         int result = checksum_verify_file(program_path, programs[i].checksum_sha256);
         
         if (result == 0) {
-            printf("✅ %s - OK\n", programs[i].name);
+            printf(" %s - OK\n", programs[i].name);
         } else if (result == 1) {
-            printf("❌ %s - MODIFICADO (checksum no coincide)\n", programs[i].name);
+            printf(" %s - MODIFICADO (checksum no coincide)\n", programs[i].name);
             errors++;
         } else {
-            printf("⚠️  %s - ERROR (no se pudo verificar)\n", programs[i].name);
+            printf("  %s - ERROR (no se pudo verificar)\n", programs[i].name);
             errors++;
         }
     }
@@ -88,10 +88,10 @@ int checksum_verify_all(void) {
     
     printf("\n");
     if (errors == 0) {
-        printf("✅ Todos los programas verificados correctamente\n");
+        printf(" Todos los programas verificados correctamente\n");
         return 0;
     } else {
-        printf("❌ Se encontraron %d error(es)\n", errors);
+        printf(" Se encontraron %d error(es)\n", errors);
         return 1;
     }
 }
