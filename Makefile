@@ -33,6 +33,7 @@ $(TARGET): $(OBJS)
 
 install: $(TARGET)
 	@mkdir -p $(BINDIR)
+	@rm -f $(BINDIR)/$(TARGET)
 	@cp $(TARGET) $(BINDIR)/$(TARGET)
 	@chmod +x $(BINDIR)/$(TARGET)
 	@$(BINDIR)/$(TARGET) setup || true

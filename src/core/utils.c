@@ -20,6 +20,7 @@ int copy_file(const char *src, const char *dst) {
     FILE *in = fopen(src, "rb");
     if (!in) return -1;
 
+    unlink(dst); // Important: remove old file first to prevent macOS code signing SIGKILL
     FILE *out = fopen(dst, "wb");
     if (!out) { fclose(in); return -1; }
 
