@@ -7,222 +7,154 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
-int cli_run_hook_script(const char *hook_path, const char *program_name, const char *target_path, const char *source_path) {
-    if (!hook_path || hook_path[0] == '\0') {
-        return 0;
-    }
-
+/* Run an optional hook script with context env vars.  Returns 0 on success. */
+int cli_run_hook_script(const char *hook, const char *name,
+                        const char *target, const char *source) {
+    if (!hook || !*hook) return 0;
     char cmd[MAX_PATH * 3];
-    snprintf(cmd, sizeof(cmd), "LOCALBIN_NAME=\"%s\" LOCALBIN_TARGET=\"%s\" LOCALBIN_SOURCE=\"%s\" /bin/sh \"%s\"", program_name, target_path, source_path ? source_path : "", hook_path);
+    snprintf(cmd, sizeof(cmd),
+             "LOCALBIN_NAME=\"%s\" LOCALBIN_TARGET=\"%s\" LOCALBIN_SOURCE=\"%s\" /bin/sh \"%s\"",
+             name, target, source ? source : "", hook);
     int rc = system(cmd);
-    if (rc == -1) {
-        return -1;
-    }
-    if (WIFEXITED(rc)) {
-        return WEXITSTATUS(rc);
-    }
-    return -1;
+    if (rc == -1) return -1;
+    return WIFEXITED(rc) ? WEXITSTATUS(rc) : -1;
 }
 
 void cmd_remove(const char *name) {
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
 
-    char full_path[MAX_PATH];
-    snprintf(full_path, sizeof(full_path), "%s/%s", install_dir, name);
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/%s", install_dir, name);
+    if (!file_exists(path)) { fprintf(stderr, "Error: '%s' not installed\n", name); return; }
 
-    struct stat st;
-    if (stat(full_path, &st) != 0) {
-        fprintf(stderr, "Error: '%s' no está instalado\n", name);
-        return;
-    }
-
-    ProgramMetadata *programs = NULL;
-    int count = 0;
-
-    if (metadata_list_all(&programs, &count) == 0) {
-        int has_dependents = 0;
-        for (int i = 0; i < count; i++) {
-            for (int j = 0; j < programs[i].dep_count; j++) {
-                if (strcmp(programs[i].dependencies[j], name) == 0) {
-                    if (!has_dependents) {
-                        printf("  Otros programas dependen de '%s':\n", name);
-                        has_dependents = 1;
-                    }
-                    printf("   - %s\n", programs[i].name);
+    /* Warn if other programs list this as a dependency. */
+    ProgramMetadata *all = NULL; int count = 0;
+    if (metadata_list_all(&all, &count) == 0) {
+        int warned = 0;
+        for (int i = 0; i < count; i++)
+            for (int j = 0; j < all[i].dep_count; j++)
+                if (strcmp(all[i].dependencies[j], name) == 0) {
+                    if (!warned) { printf("  Dependents of '%s':\n", name); warned = 1; }
+                    printf("    - %s\n", all[i].name);
                 }
+        metadata_free_list(all);
+        if (warned) {
+            printf("\nContinue? [y/N]: ");
+            char r[8];
+            if (!fgets(r, sizeof(r), stdin) || (r[0] != 'y' && r[0] != 'Y')) {
+                printf("Cancelled\n"); return;
             }
         }
-
-        if (has_dependents) {
-            printf("\n¿Continuar con la eliminación? (s/n): ");
-            char response[10];
-            if (fgets(response, sizeof(response), stdin) == NULL || response[0] != 's') {
-                printf("Eliminación cancelada\n");
-                metadata_free_list(programs);
-                return;
-            }
-        }
-
-        metadata_free_list(programs);
     }
 
-    ProgramMetadata meta;
+    ProgramMetadata meta = {0};
     int has_meta = metadata_load(name, &meta) == 0;
 
-    if (unlink(full_path) != 0) {
-        fprintf(stderr, "Error: No se pudo eliminar '%s'\n", name);
-        return;
-    }
+    if (unlink(path) != 0) { fprintf(stderr, "Error: could not remove '%s'\n", name); return; }
 
-    if (has_meta && meta.alias[0] != '\0') {
+    if (has_meta && meta.alias[0]) {
         char alias_path[MAX_PATH];
         snprintf(alias_path, sizeof(alias_path), "%s/%s", install_dir, meta.alias);
-        if (file_exists(alias_path)) {
-            unlink(alias_path);
-        }
+        if (file_exists(alias_path)) unlink(alias_path);
     }
-
     metadata_delete(name);
-
-    printf("  Eliminado: %s\n", name);
+    printf("  Removed: %s\n", name);
 }
 
 void cmd_update(const char *name, const char *src_path) {
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
 
-    char dest_path[MAX_PATH];
-    snprintf(dest_path, sizeof(dest_path), "%s/%s", install_dir, name);
-
-    struct stat st;
-    if (stat(dest_path, &st) != 0) {
-        fprintf(stderr, "Error: '%s' no está instalado. Usa 'install' primero.\n", name);
+    char dest[MAX_PATH];
+    snprintf(dest, sizeof(dest), "%s/%s", install_dir, name);
+    if (!file_exists(dest)) {
+        fprintf(stderr, "Error: '%s' not installed. Use 'install' first.\n", name);
+        return;
+    }
+    if (!file_exists(src_path)) {
+        fprintf(stderr, "Error: source '%s' does not exist\n", src_path);
         return;
     }
 
-    if (stat(src_path, &st) != 0) {
-        fprintf(stderr, "Error: El archivo '%s' no existe\n", src_path);
-        return;
-    }
+    printf("  Updating: %s\n", name);
 
-    printf(" Actualizando: %s\n", name);
+    char old_sum[65], new_sum[65];
+    checksum_calculate_sha256(dest,     old_sum, sizeof(old_sum));
+    checksum_calculate_sha256(src_path, new_sum, sizeof(new_sum));
 
-    char old_checksum[65], new_checksum[65];
-    checksum_calculate_sha256(dest_path, old_checksum, sizeof(old_checksum));
-    checksum_calculate_sha256(src_path, new_checksum, sizeof(new_checksum));
+    if (strcmp(old_sum, new_sum) == 0) { printf("  Already up to date\n"); return; }
 
-    if (strcmp(old_checksum, new_checksum) == 0) {
-        printf(" El programa ya está actualizado (mismo checksum)\n");
-        return;
-    }
-
-    ProgramMetadata meta;
+    ProgramMetadata meta = {0};
     int has_meta = metadata_load(name, &meta) == 0;
-    if (has_meta && meta.pre_update_hook[0] != '\0') {
-        int hook_rc = cli_run_hook_script(meta.pre_update_hook, name, dest_path, src_path);
-        if (hook_rc != 0) {
-            fprintf(stderr, "Error: pre-update hook falló (%d): %s\n", hook_rc, meta.pre_update_hook);
-            return;
-        }
+
+    if (has_meta && meta.pre_update_hook[0]) {
+        int rc = cli_run_hook_script(meta.pre_update_hook, name, dest, src_path);
+        if (rc != 0) { fprintf(stderr, "Error: pre-update hook failed (%d)\n", rc); return; }
     }
 
+    /* Backup */
     char backup_dir[MAX_PATH];
     get_backups_dir(backup_dir, sizeof(backup_dir));
     ensure_dir(backup_dir);
+    char backup[MAX_PATH];
+    snprintf(backup, sizeof(backup), "%s/%s.%ld.bak", backup_dir, name, (long)time(NULL));
+    if (copy_file(dest, backup) == 0) printf("  Backup: %s\n", backup);
 
-    char backup_path[MAX_PATH];
-    time_t now = time(NULL);
-    snprintf(backup_path, sizeof(backup_path), "%s/%s.%ld.bak", backup_dir, name, now);
-
-    if (copy_file(dest_path, backup_path) == 0) {
-        printf("   Backup creado: %s\n", backup_path);
-    }
-
-    if (copy_file(src_path, dest_path) != 0) {
-        fprintf(stderr, "Error: No se pudo actualizar el archivo\n");
-        return;
-    }
+    if (copy_file(src_path, dest) != 0) { fprintf(stderr, "Error: update failed\n"); return; }
 
     if (has_meta) {
-        strncpy(meta.checksum_sha256, new_checksum, sizeof(meta.checksum_sha256) - 1);
+        strncpy(meta.checksum_sha256, new_sum, sizeof(meta.checksum_sha256) - 1);
         meta.update_date = time(NULL);
-
-        char abs_src_path[MAX_PATH];
-        if (realpath(src_path, abs_src_path) != NULL) {
-            strncpy(meta.source_path, abs_src_path, sizeof(meta.source_path) - 1);
-        }
-
-        struct stat new_st;
-        if (stat(src_path, &new_st) == 0) {
-            meta.size_bytes = new_st.st_size;
-        }
-
+        char abs[MAX_PATH];
+        strncpy(meta.source_path,
+                realpath(src_path, abs) ? abs : src_path,
+                sizeof(meta.source_path) - 1);
+        struct stat st;
+        if (stat(src_path, &st) == 0) meta.size_bytes = st.st_size;
         metadata_save(&meta);
 
-        if (meta.post_update_hook[0] != '\0') {
-            int hook_rc = cli_run_hook_script(meta.post_update_hook, name, dest_path, src_path);
-            if (hook_rc != 0) {
-                fprintf(stderr, "Advertencia: post-update hook falló (%d): %s\n", hook_rc, meta.post_update_hook);
-            }
+        if (meta.post_update_hook[0]) {
+            int rc = cli_run_hook_script(meta.post_update_hook, name, dest, src_path);
+            if (rc != 0) fprintf(stderr, "Warning: post-update hook failed (%d)\n", rc);
         }
     }
 
-    printf(" Actualizado exitosamente\n");
-    printf("   SHA256 anterior: %s\n", old_checksum);
-    printf("   SHA256 nuevo:    %s\n", new_checksum);
+    printf("  Updated\n");
+    printf("  Old SHA256: %s\n", old_sum);
+    printf("  New SHA256: %s\n", new_sum);
 }
 
 void cmd_verify(const char *name) {
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/%s", install_dir, name);
 
-    char full_path[MAX_PATH];
-    snprintf(full_path, sizeof(full_path), "%s/%s", install_dir, name);
+    if (!file_exists(path)) { fprintf(stderr, "Error: '%s' not installed\n", name); return; }
 
-    if (!file_exists(full_path)) {
-        fprintf(stderr, " Error: El programa '%s' no está instalado\n", name);
-        return;
-    }
-
-    ProgramMetadata meta;
+    ProgramMetadata meta = {0};
     if (metadata_load(name, &meta) != 0) {
-        fprintf(stderr, "  Advertencia: No hay metadata para '%s'\n", name);
-        fprintf(stderr, "   Este programa fue instalado antes del sistema de metadata.\n");
-        fprintf(stderr, "   Para generar metadata, reinstala el programa:\n");
-        fprintf(stderr, "   localbin update %s /ruta/al/binario\n", name);
-
+        fprintf(stderr, "  No metadata for '%s' (reinstall to generate)\n", name);
         char actual[65];
-        if (checksum_calculate_sha256(full_path, actual, sizeof(actual)) == 0) {
-            printf("\n Checksum actual (SHA256):\n");
-            printf("   %s\n", actual);
-        }
+        if (checksum_calculate_sha256(path, actual, sizeof(actual)) == 0)
+            printf("  Current SHA256: %s\n", actual);
         return;
     }
 
-    printf(" Verificando: %s\n", name);
-
-    int result = checksum_verify_file(full_path, meta.checksum_sha256);
-
-    if (result == 0) {
-        printf(" OK - Checksum coincide\n");
-    } else if (result == 1) {
-        printf(" MODIFICADO - Checksum no coincide\n");
-
+    printf("  Verifying: %s\n", name);
+    int r = checksum_verify_file(path, meta.checksum_sha256);
+    if      (r == 0) printf("  ✓ OK\n");
+    else if (r == 1) {
         char actual[65];
-        checksum_calculate_sha256(full_path, actual, sizeof(actual));
-        printf("   Esperado: %s\n", meta.checksum_sha256);
-        printf("   Actual:   %s\n", actual);
-    } else {
-        printf("  ERROR - No se pudo verificar\n");
-    }
+        checksum_calculate_sha256(path, actual, sizeof(actual));
+        printf("  ✗ MODIFIED\n  Expected: %s\n  Actual:   %s\n", meta.checksum_sha256, actual);
+    } else           printf("  ? ERROR\n");
 }
 
-void cmd_verify_all(void) {
-    checksum_verify_all();
-}
+void cmd_verify_all(void) { checksum_verify_all(); }

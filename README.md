@@ -1,89 +1,70 @@
 # localbin
 
-Administrador simple de binarios locales para macOS.
+A minimal local binary manager for macOS. Installs executables into `~/.localbin`, tracks them with SHA256 checksums and JSON metadata, and handles upgrades with optional pre/post hooks.
 
-Con `localbin` puedes instalar ejecutables en `~/.localbin` y gestionarlos con comandos como `install`, `list`, `info`, `update`, `remove` y `verify`.
-
-## Instalacion rapida
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/svaldesoliva/localbin/main/install.sh | bash
 ```
 
-Este script descarga el proyecto, compila, instala en `~/.localbin` e intenta configurar tu `PATH`.
-La configuracion automatica cubre `zsh`, `bash`, `fish`, `csh/tcsh` y fallback en `~/.profile`.
+Clones, compiles, installs to `~/.localbin`, and patches your shell config (`zsh`, `bash`, `fish`, `csh`, or `~/.profile`).
 
-## Instalacion manual
+### Manual
 
 ```bash
-git clone https://github.com/svaldesoliva/localbin.git
-cd localbin
-make
-make install
-~/.localbin/localbin setup
+git clone https://github.com/svaldesoliva/localbin.git && cd localbin
+make && make install
 ```
 
-## Uso basico
+## Usage
 
 ```bash
-# Instalar un binario
-localbin install ./mi_programa
-localbin install ./mi_programa --version 1.2.3
+# install
+localbin install ./mytool
+localbin install ./mytool --version 1.2.3 --as tool --alias t
+localbin install https://example.com/binary --version 2.0
 
-# Instalar desde URL
-localbin install https://url.com/binario --version 1.2.3
+# hooks (run before/after update)
+localbin install ./mytool \
+  --pre-update-hook ~/.localbin/hooks/pre.sh \
+  --post-update-hook ~/.localbin/hooks/post.sh
 
-# Instalar con nombre distinto
-localbin install ./mi_programa --as mi_programa_v2
+# manage
+localbin list [--sort name|date|size] [--json]
+localbin info  <name>
+localbin search <term>
+localbin update <name> <file>
+localbin remove <name>
 
-# Crear alias (symlink)
-localbin install ./mi_programa --alias mi-programa
-
-# Hooks para update
-localbin install ./mi_programa \
-  --pre-update-hook ~/.localbin/hooks/pre_update.sh \
-  --post-update-hook ~/.localbin/hooks/post_update.sh
-
-# Ver programas instalados
-localbin list
-
-# Ver detalle de un programa
-localbin info mi_programa
-
-# Actualizar un programa
-localbin update mi_programa ./mi_programa_nuevo
-
-# Verificar integridad
-localbin verify mi_programa
+# integrity
+localbin verify <name>
 localbin verify --all
 
-# Eliminar
-localbin remove mi_programa
-```
-
-## Comandos utiles
-
-```bash
+# system
 localbin doctor
 localbin setup
-localbin version
-localbin self-update
-localbin self-update --manual
-localbin help
+localbin self-update [--manual]
 ```
 
-## Desarrollo
+## Build
 
-```bash
-make
-make debug
-make test
-make analyze
-make format
-make clean
+```
+make          build
+make install  install to ~/.localbin
+make debug    build with -g and sanitizers off
+make test     run help + doctor
+make analyze  clang static analysis
+make format   clang-format all sources
+make clean    remove build artifacts
 ```
 
+## How it works
 
-## Licencia
+Each installed binary gets a `~/.localbin/.metadata/<name>.json` file recording the source path, version, SHA256, install/update timestamps, size, permissions, optional alias, and hook scripts. `verify` and `doctor` re-hash the live binary and compare.
+
+Backups are written to `~/.localbin/.backups/` on every `update`.
+
+## License
 
 MIT

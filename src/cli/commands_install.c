@@ -9,172 +9,125 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
-int cli_is_url_path(const char *value) {
-    return strncmp(value, "http://", 7) == 0 || strncmp(value, "https://", 8) == 0;
+int cli_is_url_path(const char *v) {
+    return strncmp(v, "http://", 7) == 0 || strncmp(v, "https://", 8) == 0;
 }
 
-int cli_download_to_temp(const char *url, char *out_path, size_t out_size) {
-    char template_path[] = "/tmp/localbin-download-XXXXXX";
-    int fd = mkstemp(template_path);
-    if (fd < 0) {
-        return -1;
-    }
+int cli_download_to_temp(const char *url, char *out, size_t out_size) {
+    char tmp[] = "/tmp/localbin-XXXXXX";
+    int fd = mkstemp(tmp);
+    if (fd < 0) return -1;
     close(fd);
 
     char cmd[MAX_PATH * 2];
-    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" -o \"%s\"", url, template_path);
-    if (system(cmd) != 0) {
-        unlink(template_path);
-        return -1;
-    }
+    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" -o \"%s\"", url, tmp);
+    if (system(cmd) != 0) { unlink(tmp); return -1; }
 
-    chmod(template_path, 0755);
-    snprintf(out_path, out_size, "%s", template_path);
+    chmod(tmp, 0755);
+    snprintf(out, out_size, "%s", tmp);
     return 0;
 }
 
-void cmd_install_with_options(const char *src_path, const char *version, const char *as_name, const char *alias, const char *pre_hook, const char *post_hook) {
-    struct stat st;
-    char downloaded_path[MAX_PATH] = {0};
-    const char *effective_src = src_path;
+void cmd_install_with_options(const char *src_path, const char *version,
+                              const char *as_name, const char *alias,
+                              const char *pre_hook, const char *post_hook) {
+    char downloaded[MAX_PATH] = {0};
+    const char *src = src_path;
 
     if (cli_is_url_path(src_path)) {
-        printf(" Descargando: %s\n", src_path);
-        if (cli_download_to_temp(src_path, downloaded_path, sizeof(downloaded_path)) != 0) {
-            fprintf(stderr, "Error: No se pudo descargar '%s'\n", src_path);
+        printf("  Downloading: %s\n", src_path);
+        if (cli_download_to_temp(src_path, downloaded, sizeof(downloaded)) != 0) {
+            fprintf(stderr, "Error: download failed: %s\n", src_path);
             return;
         }
-        effective_src = downloaded_path;
+        src = downloaded;
     }
 
-    if (stat(effective_src, &st) != 0) {
-        fprintf(stderr, "Error: El archivo '%s' no existe\n", effective_src);
-        if (downloaded_path[0] != '\0') {
-            unlink(downloaded_path);
-        }
-        return;
-    }
-
-    if (!S_ISREG(st.st_mode)) {
-        fprintf(stderr, "Error: '%s' no es un archivo regular\n", effective_src);
-        if (downloaded_path[0] != '\0') {
-            unlink(downloaded_path);
-        }
+    struct stat st;
+    if (stat(src, &st) != 0 || !S_ISREG(st.st_mode)) {
+        fprintf(stderr, "Error: not a regular file: %s\n", src);
+        if (downloaded[0]) unlink(downloaded);
         return;
     }
 
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
-
     if (ensure_dir(install_dir) != 0) {
-        fprintf(stderr, "Error: No se pudo crear el directorio %s\n", install_dir);
-        if (downloaded_path[0] != '\0') {
-            unlink(downloaded_path);
-        }
+        fprintf(stderr, "Error: cannot create %s\n", install_dir);
+        if (downloaded[0]) unlink(downloaded);
         return;
     }
 
     char *src_copy = strdup(src_path);
-    char *base = basename(src_copy);
-    const char *target_name = (as_name && as_name[0] != '\0') ? as_name : base;
+    const char *target = (as_name && *as_name) ? as_name : basename(src_copy);
 
-    char dest_path[MAX_PATH];
-    snprintf(dest_path, sizeof(dest_path), "%s/%s", install_dir, target_name);
+    char dest[MAX_PATH];
+    snprintf(dest, sizeof(dest), "%s/%s", install_dir, target);
 
-    if (file_exists(dest_path)) {
-        fprintf(stderr, "  '%s' ya está instalado. Usa 'update' para actualizarlo.\n", target_name);
-        free(src_copy);
-        if (downloaded_path[0] != '\0') {
-            unlink(downloaded_path);
-        }
+    if (file_exists(dest)) {
+        fprintf(stderr, "  '%s' already installed. Use 'update' to upgrade.\n", target);
+        free(src_copy); if (downloaded[0]) unlink(downloaded);
         return;
     }
 
     char checksum[65];
-    if (checksum_calculate_sha256(effective_src, checksum, sizeof(checksum)) != 0) {
-        fprintf(stderr, "Error: No se pudo calcular checksum\n");
-        free(src_copy);
-        if (downloaded_path[0] != '\0') {
-            unlink(downloaded_path);
-        }
+    if (checksum_calculate_sha256(src, checksum, sizeof(checksum)) != 0) {
+        fprintf(stderr, "Error: checksum failed\n");
+        free(src_copy); if (downloaded[0]) unlink(downloaded);
         return;
     }
 
-    if (copy_file(effective_src, dest_path) != 0) {
-        fprintf(stderr, "Error: No se pudo copiar '%s' a '%s'\n", effective_src, dest_path);
-        free(src_copy);
-        if (downloaded_path[0] != '\0') {
-            unlink(downloaded_path);
-        }
+    if (copy_file(src, dest) != 0) {
+        fprintf(stderr, "Error: copy failed: %s -> %s\n", src, dest);
+        free(src_copy); if (downloaded[0]) unlink(downloaded);
         return;
     }
 
-    ProgramMetadata meta;
-    memset(&meta, 0, sizeof(meta));
-    strncpy(meta.name, target_name, sizeof(meta.name) - 1);
+    ProgramMetadata meta = {0};
+    strncpy(meta.name,    target,               sizeof(meta.name) - 1);
     strncpy(meta.version, version ? version : "1.0.0", sizeof(meta.version) - 1);
 
-    char abs_src_path[MAX_PATH];
-    if (realpath(src_path, abs_src_path) != NULL) {
-        strncpy(meta.source_path, abs_src_path, sizeof(meta.source_path) - 1);
-    } else {
-        strncpy(meta.source_path, src_path, sizeof(meta.source_path) - 1);
-    }
+    char abs_src[MAX_PATH];
+    strncpy(meta.source_path,
+            realpath(src_path, abs_src) ? abs_src : src_path,
+            sizeof(meta.source_path) - 1);
 
-    strncpy(meta.alias, alias ? alias : "", sizeof(meta.alias) - 1);
-    strncpy(meta.pre_update_hook, pre_hook ? pre_hook : "", sizeof(meta.pre_update_hook) - 1);
+    strncpy(meta.alias,            alias     ? alias     : "", sizeof(meta.alias) - 1);
+    strncpy(meta.pre_update_hook,  pre_hook  ? pre_hook  : "", sizeof(meta.pre_update_hook) - 1);
     strncpy(meta.post_update_hook, post_hook ? post_hook : "", sizeof(meta.post_update_hook) - 1);
-    strncpy(meta.checksum_sha256, checksum, sizeof(meta.checksum_sha256) - 1);
-    meta.install_date = time(NULL);
-    meta.update_date = meta.install_date;
-    meta.size_bytes = st.st_size;
-    meta.permissions = st.st_mode;
-    meta.dep_count = 0;
+    strncpy(meta.checksum_sha256,  checksum,                   sizeof(meta.checksum_sha256) - 1);
+    meta.install_date = meta.update_date = time(NULL);
+    meta.size_bytes   = st.st_size;
+    meta.permissions  = st.st_mode;
 
-    if (metadata_save(&meta) != 0) {
-        fprintf(stderr, "  Instalado pero no se pudo guardar metadata\n");
-    }
+    if (metadata_save(&meta) != 0)
+        fprintf(stderr, "  Installed but metadata could not be saved\n");
 
-    if (alias && alias[0] != '\0') {
+    if (alias && *alias) {
         char alias_path[MAX_PATH];
         snprintf(alias_path, sizeof(alias_path), "%s/%s", install_dir, alias);
-        if (file_exists(alias_path)) {
-            fprintf(stderr, "  Alias '%s' no creado: ya existe\n", alias);
-        } else if (symlink(target_name, alias_path) != 0) {
-            fprintf(stderr, "  Alias '%s' no creado\n", alias);
-        } else {
-            printf(" Alias creado: %s -> %s\n", alias, target_name);
-        }
+        if (file_exists(alias_path))
+            fprintf(stderr, "  Alias '%s' skipped: already exists\n", alias);
+        else if (symlink(target, alias_path) != 0)
+            fprintf(stderr, "  Alias '%s' could not be created\n", alias);
+        else
+            printf("  Alias: %s -> %s\n", alias, target);
     }
-
-    printf(" Instalado: %s", target_name);
-    if (version) {
-        printf(" (v%s)", version);
-    }
-    printf("\n");
-    printf("   Ruta: %s\n", dest_path);
-    printf("   SHA256: %s\n", checksum);
 
     char size_str[32];
     format_size(st.st_size, size_str, sizeof(size_str));
-    printf("   Tamaño: %s\n", size_str);
-
-    if (pre_hook && pre_hook[0] != '\0') {
-        printf("   Pre-update hook: %s\n", pre_hook);
-    }
-    if (post_hook && post_hook[0] != '\0') {
-        printf("   Post-update hook: %s\n", post_hook);
-    }
+    printf("  Installed: %s%s%s\n", target, version ? " v" : "", version ? version : "");
+    printf("  Path:   %s\n", dest);
+    printf("  SHA256: %s\n", checksum);
+    printf("  Size:   %s\n", size_str);
+    if (pre_hook  && *pre_hook)  printf("  Pre-hook:  %s\n", pre_hook);
+    if (post_hook && *post_hook) printf("  Post-hook: %s\n", post_hook);
 
     free(src_copy);
-    if (downloaded_path[0] != '\0') {
-        unlink(downloaded_path);
-    }
-
+    if (downloaded[0]) unlink(downloaded);
     warn_path();
 }
 

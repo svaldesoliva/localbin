@@ -9,103 +9,81 @@
 #include <sys/stat.h>
 
 void cmd_doctor(void) {
-    printf(" Verificando configuración de localbin...\n\n");
+    printf("  localbin health check\n\n");
 
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
 
     struct stat st;
-    if (stat(install_dir, &st) == 0) {
-        printf(" Directorio existe: %s\n", install_dir);
-    } else {
-        printf(" Directorio no existe: %s\n", install_dir);
-    }
+    printf("  %-30s %s\n", "Install dir:",
+           stat(install_dir, &st) == 0 ? "exists" : "missing");
+    printf("  %-30s %s\n", "In PATH:", check_path() ? "yes" : "no");
 
-    if (check_path()) {
-        printf(" Directorio está en PATH\n");
-    } else {
-        printf(" Directorio NO está en PATH\n");
-    }
+    if (stat(install_dir, &st) == 0)
+        printf("  %-30s %s\n", "Writable:", (st.st_mode & S_IWUSR) ? "yes" : "no");
 
-    DIR *dir = opendir(install_dir);
-    if (dir) {
-        int count = 0;
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != NULL) {
-            char full_path[MAX_PATH];
-            snprintf(full_path, sizeof(full_path), "%s/%s", install_dir, entry->d_name);
-            if (is_executable(full_path)) {
-                count++;
-            }
+    int count = 0;
+    DIR *d = opendir(install_dir);
+    if (d) {
+        struct dirent *e;
+        char path[MAX_PATH];
+        while ((e = readdir(d))) {
+            snprintf(path, sizeof(path), "%s/%s", install_dir, e->d_name);
+            if (is_executable(path)) count++;
         }
-        closedir(dir);
-        printf(" Programas instalados: %d\n", count);
-
-        printf("\n Verificando integridad...\n");
-        checksum_verify_all();
+        closedir(d);
     }
-
-    if (stat(install_dir, &st) == 0) {
-        if (st.st_mode & S_IWUSR) {
-            printf(" Permisos de escritura: OK\n");
-        } else {
-            printf(" Sin permisos de escritura\n");
-        }
-    }
-
-    printf("\n");
+    printf("  %-30s %d\n\n", "Programs installed:", count);
+    checksum_verify_all();
 }
 
 void cmd_setup(void) {
-    printf(" Configurando PATH automáticamente...\n\n");
+    printf("  Configuring PATH...\n\n");
 
-    const char *shell = getenv("SHELL");
-    const int is_fish = shell && strstr(shell, "fish");
-    const int is_csh = shell && (strstr(shell, "csh") || strstr(shell, "tcsh"));
-    char config_path[MAX_PATH];
-    get_shell_config_file(config_path, sizeof(config_path));
+    char config[MAX_PATH];
+    get_shell_config_file(config, sizeof(config));
 
-    FILE *f = fopen(config_path, "r");
+    /* Already configured? */
+    FILE *f = fopen(config, "r");
     if (f) {
         char line[512];
         while (fgets(line, sizeof(line), f)) {
             if (strstr(line, ".localbin") && strstr(line, "PATH")) {
-                printf(" PATH ya está configurado en %s\n", config_path);
-                fclose(f);
-                mark_configured();
-                return;
+                printf("  PATH already configured in %s\n", config);
+                fclose(f); mark_configured(); return;
             }
         }
         fclose(f);
     }
 
-    if (is_fish) {
+    /* Create fish config dir if needed */
+    const char *shell = getenv("SHELL");
+    if (shell && strstr(shell, "fish")) {
         char fish_dir[MAX_PATH];
         snprintf(fish_dir, sizeof(fish_dir), "%s/.config/fish", get_home_dir());
         if (ensure_dir(fish_dir) != 0) {
-            fprintf(stderr, " Error: No se pudo crear %s\n", fish_dir);
-            return;
+            fprintf(stderr, "  Error: cannot create %s\n", fish_dir); return;
         }
     }
 
-    f = fopen(config_path, "a");
-    if (!f) {
-        fprintf(stderr, " Error: No se pudo abrir %s\n", config_path);
-        return;
-    }
+    /* Build the export line using the shared helper in utils.c */
+    char line[256];
+    /* Access the same logic via shell_path_line — declared via extern for reuse */
+    /* (shell_path_line is static in utils.c; use get_shell_config_file side effect
+       and duplicate the minimal switch here — it's 3 branches, not worth extracting) */
+    if (shell && strstr(shell, "fish"))
+        snprintf(line, sizeof(line), "set -gx PATH $HOME/.localbin $PATH");
+    else if (shell && (strstr(shell, "csh") || strstr(shell, "tcsh")))
+        snprintf(line, sizeof(line), "setenv PATH \"$HOME/.localbin:$PATH\"");
+    else
+        snprintf(line, sizeof(line), "export PATH=\"$HOME/.localbin:$PATH\"");
 
-    fprintf(f, "\n# Agregado por localbin\n");
-    if (is_fish) {
-        fprintf(f, "set -gx PATH $HOME/.localbin $PATH\n");
-    } else if (is_csh) {
-        fprintf(f, "setenv PATH \"$HOME/.localbin:$PATH\"\n");
-    } else {
-        fprintf(f, "export PATH=\"$HOME/.localbin:$PATH\"\n");
-    }
+    f = fopen(config, "a");
+    if (!f) { fprintf(stderr, "  Error: cannot open %s\n", config); return; }
+    fprintf(f, "\n# Added by localbin\n%s\n", line);
     fclose(f);
 
-    printf(" PATH configurado en %s\n", config_path);
-    printf("\n   Para aplicar: source %s\n", config_path);
-
+    printf("  Wrote to %s\n", config);
+    printf("  Apply now: source %s\n", config);
     mark_configured();
 }
