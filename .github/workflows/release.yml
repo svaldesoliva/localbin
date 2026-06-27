@@ -1,0 +1,51 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: get_version
+        run: |
+          VERSION=$(grep -oE '#define LOCALBIN_VERSION "[0-9]+\.[0-9]+\.[0-9]+"' include/localbin/app/version.h | cut -d '"' -f 2)
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check_tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git ls-remote --tags origin refs/tags/${{ steps.get_version.outputs.version }} | grep -q "${{ steps.get_version.outputs.version }}"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build binaries
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          make clean
+          make
+          mv localbin localbin-linux-amd64
+          tar -czvf localbin-linux-amd64.tar.gz localbin-linux-amd64
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: "Auto-generated release for version ${{ steps.get_version.outputs.version }}."
+          files: |
+            localbin-linux-amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
