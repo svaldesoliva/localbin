@@ -1,6 +1,6 @@
 # localbin
 
-A minimal local binary manager for macOS. Installs executables into `~/.localbin`, tracks them with SHA256 checksums and JSON metadata, and handles upgrades with optional pre/post hooks.
+A minimal local binary manager for macOS and Linux. Installs executables into `~/.localbin`, tracks them with SHA256 checksums and JSON metadata, and handles upgrades with optional pre/post hooks.
 
 ## Install
 
@@ -36,6 +36,8 @@ localbin info  <name>
 localbin search <term>
 localbin update <name> <file>
 localbin remove <name>
+localbin rename <old> <new>
+localbin which  <name>
 
 # integrity
 localbin verify <name>
