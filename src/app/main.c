@@ -11,10 +11,10 @@ int main(int argc, char *argv[]) {
     
     const char *cmd = argv[1];
     
-    // Comandos principales
+    // Main commands
     if (strcmp(cmd, "install") == 0) {
         if (argc < 3) {
-            fprintf(stderr, "Uso: %s install <archivo|url> [--version VERSION] [--as NOMBRE] [--alias NOMBRE] [--pre-update-hook SCRIPT] [--post-update-hook SCRIPT]\n", argv[0]);
+            fprintf(stderr, "Usage: %s install <file|url> [--version VERSION] [--as NAME] [--alias NAME] [--pre-update-hook SCRIPT] [--post-update-hook SCRIPT]\n", argv[0]);
             return 1;
         }
         
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
             } else if (strcmp(argv[i], "--post-update-hook") == 0 && i + 1 < argc) {
                 post_hook = argv[++i];
             } else {
-                fprintf(stderr, "Opción inválida para install: %s\n", argv[i]);
+                fprintf(stderr, "Invalid option for install: %s\n", argv[i]);
                 return 1;
             }
         }
@@ -45,14 +45,14 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(cmd, "update") == 0) {
         if (argc != 4) {
-            fprintf(stderr, "Uso: %s update <nombre> <archivo>\n", argv[0]);
+            fprintf(stderr, "Usage: %s update <name> <file>\n", argv[0]);
             return 1;
         }
         cmd_update(argv[2], argv[3]);
     }
     else if (strcmp(cmd, "remove") == 0 || strcmp(cmd, "rm") == 0) {
         if (argc != 3) {
-            fprintf(stderr, "Uso: %s remove <nombre>\n", argv[0]);
+            fprintf(stderr, "Usage: %s remove <name>\n", argv[0]);
             return 1;
         }
         cmd_remove(argv[2]);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
         opts.sort = SORT_NAME;
         opts.json_output = 0;
         
-        // Parsear opciones
+        // Parse options
         for (int i = 2; i < argc; i++) {
             if (strcmp(argv[i], "--sort") == 0 && i + 1 < argc) {
                 i++;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(cmd, "info") == 0) {
         if (argc != 3) {
-            fprintf(stderr, "Uso: %s info <nombre>\n", argv[0]);
+            fprintf(stderr, "Usage: %s info <name>\n", argv[0]);
             return 1;
         }
         cmd_info(argv[2]);
