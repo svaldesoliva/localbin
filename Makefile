@@ -9,7 +9,6 @@ SRCS = src/app/main.c \
        src/core/paths.c \
        src/core/utils.c \
        src/storage/metadata.c \
-       src/security/sha256.c \
        src/security/checksum.c \
        src/cli/commands_install.c \
        src/cli/commands_list.c \

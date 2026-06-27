@@ -13,7 +13,6 @@ static void build_path(char *buf, size_t size, const char *suffix) {
 
 void get_install_dir(char *buf, size_t size)  { build_path(buf, size, INSTALL_DIR);  }
 void get_metadata_dir(char *buf, size_t size) { build_path(buf, size, METADATA_DIR); }
-void get_backups_dir(char *buf, size_t size)  { build_path(buf, size, BACKUPS_DIR);  }
 void get_config_flag(char *buf, size_t size)  { build_path(buf, size, CONFIG_FLAG);  }
 
 int is_configured(void) {

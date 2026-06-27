@@ -8,9 +8,7 @@
 #define INSTALL_DIR  "/.localbin"
 #define CONFIG_FLAG  "/.localbin/.configured"
 #define METADATA_DIR "/.localbin/.metadata"
-#define BACKUPS_DIR  "/.localbin/.backups"
 #define MAX_PATH     1024
-#define MAX_DEPS     32
 
 typedef struct {
     char     name[256];
@@ -24,8 +22,6 @@ typedef struct {
     time_t   update_date;
     long long size_bytes;
     mode_t   permissions;
-    char     dependencies[MAX_DEPS][256];
-    int      dep_count;
 } ProgramMetadata;
 
 typedef struct {
@@ -47,7 +43,6 @@ typedef struct {
 /* core/paths.c */
 void get_install_dir(char *buf, size_t size);
 void get_metadata_dir(char *buf, size_t size);
-void get_backups_dir(char *buf, size_t size);
 void get_config_flag(char *buf, size_t size);
 int  is_configured(void);
 void mark_configured(void);

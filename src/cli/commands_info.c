@@ -56,9 +56,5 @@ void cmd_info(const char *name) {
         if (v == 1)
             printf("  Expected: %s\n  Actual:   %s\n", meta.checksum_sha256, checksum);
     }
-    if (meta.dep_count > 0) {
-        printf("\n  Dependencies:\n");
-        for (int i = 0; i < meta.dep_count; i++) printf("    - %s\n", meta.dependencies[i]);
-    }
     printf("\n");
 }

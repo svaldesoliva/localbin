@@ -33,25 +33,7 @@ void cmd_remove(const char *name) {
     snprintf(path, sizeof(path), "%s/%s", install_dir, name);
     if (!file_exists(path)) { fprintf(stderr, "Error: '%s' not installed\n", name); return; }
 
-    /* Warn if other programs list this as a dependency. */
-    ProgramMetadata *all = NULL; int count = 0;
-    if (metadata_list_all(&all, &count) == 0) {
-        int warned = 0;
-        for (int i = 0; i < count; i++)
-            for (int j = 0; j < all[i].dep_count; j++)
-                if (strcmp(all[i].dependencies[j], name) == 0) {
-                    if (!warned) { printf("  Dependents of '%s':\n", name); warned = 1; }
-                    printf("    - %s\n", all[i].name);
-                }
-        metadata_free_list(all);
-        if (warned) {
-            printf("\nContinue? [y/N]: ");
-            char r[8];
-            if (!fgets(r, sizeof(r), stdin) || (r[0] != 'y' && r[0] != 'Y')) {
-                printf("Cancelled\n"); return;
-            }
-        }
-    }
+
 
     ProgramMetadata meta = {0};
     int has_meta = metadata_load(name, &meta) == 0;
@@ -97,14 +79,6 @@ void cmd_update(const char *name, const char *src_path) {
         int rc = cli_run_hook_script(meta.pre_update_hook, name, dest, src_path);
         if (rc != 0) { fprintf(stderr, "Error: pre-update hook failed (%d)\n", rc); return; }
     }
-
-    /* Backup */
-    char backup_dir[MAX_PATH];
-    get_backups_dir(backup_dir, sizeof(backup_dir));
-    ensure_dir(backup_dir);
-    char backup[MAX_PATH];
-    snprintf(backup, sizeof(backup), "%s/%s.%ld.bak", backup_dir, name, (long)time(NULL));
-    if (copy_file(dest, backup) == 0) printf("  Backup: %s\n", backup);
 
     if (copy_file(src_path, dest) != 0) { fprintf(stderr, "Error: update failed\n"); return; }
 

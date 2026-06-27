@@ -1,5 +1,4 @@
 #include "localbin/security/checksum.h"
-#include "localbin/security/sha256.h"
 #include "localbin/core/core.h"
 #include "localbin/core/utils.h"
 #include "localbin/storage/metadata.h"
@@ -7,45 +6,51 @@
 #include <stdlib.h>
 #include <string.h>
 
-int checksum_calculate_sha256(const char *filepath, char *out, size_t out_size) {
+int checksum_calculate_sha256(const char *path, char *out_hash, size_t out_size) {
     if (out_size < 65) return -1;
-
-    FILE *f = fopen(filepath, "rb");
+    
+    char cmd[MAX_PATH * 2];
+    /* Try shasum (macOS/Linux standard) then sha256sum (Linux) */
+    snprintf(cmd, sizeof(cmd), "shasum -a 256 \"%s\" 2>/dev/null || sha256sum \"%s\" 2>/dev/null", path, path);
+    
+    FILE *f = popen(cmd, "r");
     if (!f) return -1;
-
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
-
-    uint8_t buf[65536];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0)
-        sha256_update(&ctx, buf, n);
-    fclose(f);
-
-    uint8_t digest[32];
-    sha256_final(&ctx, digest);
-    for (int i = 0; i < 32; i++) sprintf(out + i * 2, "%02x", digest[i]);
-    out[64] = '\0';
-    return 0;
+    
+    char buf[128];
+    if (fgets(buf, sizeof(buf), f)) {
+        char *space = strchr(buf, ' ');
+        if (space) *space = '\0';
+        strncpy(out_hash, buf, out_size - 1);
+        out_hash[out_size - 1] = '\0';
+        pclose(f);
+        return 0;
+    }
+    pclose(f);
+    return -1;
 }
 
-/* Returns 0 = match, 1 = mismatch, -1 = error. */
-int checksum_verify_file(const char *filepath, const char *expected) {
+int checksum_verify_file(const char *path, const char *expected_hash) {
+    if (!expected_hash || !*expected_hash) return -1;
     char actual[65];
-    if (checksum_calculate_sha256(filepath, actual, sizeof(actual)) != 0) return -1;
-    return strcmp(actual, expected) == 0 ? 0 : 1;
+    if (checksum_calculate_sha256(path, actual, sizeof(actual)) != 0) return -1;
+    return strcmp(actual, expected_hash) == 0 ? 0 : 1;
 }
 
-int checksum_verify_all(void) {
+void checksum_verify_all(void) {
     ProgramMetadata *programs = NULL;
     int count = 0;
-    if (metadata_list_all(&programs, &count) != 0) return -1;
+    
+    if (metadata_list_all(&programs, &count) != 0 || count == 0) {
+        printf("  No programs installed or could not read metadata.\n");
+        return;
+    }
+
+    printf("  Verifying %d program(s)...\n\n", count);
+    int errors = 0;
 
     char install_dir[MAX_PATH];
     get_install_dir(install_dir, sizeof(install_dir));
-    printf("  Verifying %d program(s)...\n\n", count);
 
-    int errors = 0;
     for (int i = 0; i < count; i++) {
         char path[MAX_PATH];
         snprintf(path, sizeof(path), "%s/%s", install_dir, programs[i].name);
@@ -56,8 +61,7 @@ int checksum_verify_all(void) {
     }
 
     metadata_free_list(programs);
-    printf("\n");
-    if (errors == 0) { printf("  All programs OK\n"); return 0; }
-    printf("  %d error(s) found\n", errors);
-    return 1;
+    
+    if (errors == 0) printf("\n  All programs OK\n");
+    else             printf("\n  %d program(s) failed verification\n", errors);
 }

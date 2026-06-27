@@ -36,9 +36,11 @@ int copy_file(const char *src, const char *dst) {
 }
 
 int is_executable(const char *path) {
+    if (access(path, X_OK) != 0) return 0;
+    
     struct stat st;
     if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) return 0;
-    if (!(st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) return 0;
+    
     const char *base = strrchr(path, '/');
     char first = base ? base[1] : path[0];
     return first != '.';
