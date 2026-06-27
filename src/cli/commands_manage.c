@@ -149,12 +149,12 @@ void cmd_verify(const char *name) {
 
     printf("  Verifying: %s\n", name);
     int r = checksum_verify_file(path, meta.checksum_sha256);
-    if      (r == 0) printf("  ✓ OK\n");
+    if (r == 0)      printf("  " COLOR_GREEN "✓ OK" COLOR_RESET "\n");
     else if (r == 1) {
         char actual[65];
         checksum_calculate_sha256(path, actual, sizeof(actual));
-        printf("  ✗ MODIFIED\n  Expected: %s\n  Actual:   %s\n", meta.checksum_sha256, actual);
-    } else           printf("  ? ERROR\n");
+        printf("  " COLOR_RED "✗ MODIFIED" COLOR_RESET "\n  Expected: %s\n  Actual:   %s\n", meta.checksum_sha256, actual);
+    } else           printf("  " COLOR_BLUE "? ERROR" COLOR_RESET "\n");
 }
 
 void cmd_verify_all(void) { checksum_verify_all(); }

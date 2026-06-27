@@ -51,7 +51,8 @@ void cmd_info(const char *name) {
     if (meta.checksum_sha256[0]) {
         int v = checksum_verify_file(path, meta.checksum_sha256);
         printf("  %-14s %s\n", "Integrity:",
-               v == 0 ? "✓ OK" : (v == 1 ? "✗ MODIFIED" : "? ERROR"));
+               v == 0 ? (COLOR_GREEN "✓ OK" COLOR_RESET) :
+               (v == 1 ? (COLOR_RED "✗ MODIFIED" COLOR_RESET) : (COLOR_BLUE "? ERROR" COLOR_RESET)));
         if (v == 1)
             printf("  Expected: %s\n  Actual:   %s\n", meta.checksum_sha256, checksum);
     }

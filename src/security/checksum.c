@@ -1,6 +1,7 @@
 #include "localbin/security/checksum.h"
 #include "localbin/security/sha256.h"
 #include "localbin/core/core.h"
+#include "localbin/core/utils.h"
 #include "localbin/storage/metadata.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,9 +50,9 @@ int checksum_verify_all(void) {
         char path[MAX_PATH];
         snprintf(path, sizeof(path), "%s/%s", install_dir, programs[i].name);
         int r = checksum_verify_file(path, programs[i].checksum_sha256);
-        if      (r == 0) printf("  ✓ %s\n", programs[i].name);
-        else if (r == 1) { printf("  ✗ %s  (checksum mismatch)\n", programs[i].name); errors++; }
-        else             { printf("  ? %s  (could not verify)\n",   programs[i].name); errors++; }
+        if      (r == 0) printf("  " COLOR_GREEN "✓" COLOR_RESET " %s\n", programs[i].name);
+        else if (r == 1) { printf("  " COLOR_RED "✗" COLOR_RESET " %s  (checksum mismatch)\n", programs[i].name); errors++; }
+        else             { printf("  " COLOR_BLUE "?" COLOR_RESET " %s  (could not verify)\n",   programs[i].name); errors++; }
     }
 
     metadata_free_list(programs);

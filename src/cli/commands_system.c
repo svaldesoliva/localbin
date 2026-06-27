@@ -16,11 +16,11 @@ void cmd_doctor(void) {
 
     struct stat st;
     printf("  %-30s %s\n", "Install dir:",
-           stat(install_dir, &st) == 0 ? "exists" : "missing");
-    printf("  %-30s %s\n", "In PATH:", check_path() ? "yes" : "no");
+           stat(install_dir, &st) == 0 ? COLOR_GREEN "exists" COLOR_RESET : COLOR_RED "missing" COLOR_RESET);
+    printf("  %-30s %s\n", "In PATH:", check_path() ? COLOR_GREEN "yes" COLOR_RESET : COLOR_RED "no" COLOR_RESET);
 
     if (stat(install_dir, &st) == 0)
-        printf("  %-30s %s\n", "Writable:", (st.st_mode & S_IWUSR) ? "yes" : "no");
+        printf("  %-30s %s\n", "Writable:", (st.st_mode & S_IWUSR) ? COLOR_GREEN "yes" COLOR_RESET : COLOR_RED "no" COLOR_RESET);
 
     int count = 0;
     DIR *d = opendir(install_dir);

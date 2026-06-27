@@ -23,7 +23,7 @@ int cli_download_to_temp(const char *url, char *out, size_t out_size) {
     close(fd);
 
     char cmd[MAX_PATH * 2];
-    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" -o \"%s\"", url, tmp);
+    snprintf(cmd, sizeof(cmd), "curl -fSL -# \"%s\" -o \"%s\"", url, tmp);
     if (system(cmd) != 0) { unlink(tmp); return -1; }
 
     chmod(tmp, 0755);

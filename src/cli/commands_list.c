@@ -22,13 +22,14 @@ static int cmp_size(const void *a, const void *b) {
 }
 
 static int collect_programs(const char *dir, const ListOptions *opts,
-                            ProgramInfo *out, int max) {
+                            ProgramInfo **out) {
     DIR *d = opendir(dir);
     if (!d) return -1;
 
-    int count = 0;
+    int count = 0, cap = 16;
+    ProgramInfo *arr = malloc(cap * sizeof(*arr));
     struct dirent *e;
-    while ((e = readdir(d)) && count < max) {
+    while ((e = readdir(d))) {
         char path[MAX_PATH];
         snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
         if (!is_executable(path)) continue;
@@ -39,7 +40,8 @@ static int collect_programs(const char *dir, const ListOptions *opts,
         if (opts && opts->search_term[0] != '\0'
                 && strstr(e->d_name, opts->search_term) == NULL) continue;
 
-        ProgramInfo *pi = &out[count++];
+        if (count == cap) { cap *= 2; arr = realloc(arr, cap * sizeof(*arr)); }
+        ProgramInfo *pi = &arr[count++];
         memset(pi, 0, sizeof(*pi));
         strncpy(pi->name, e->d_name, sizeof(pi->name) - 1);
         format_time(st.st_mtime, pi->date, sizeof(pi->date));
@@ -48,6 +50,7 @@ static int collect_programs(const char *dir, const ListOptions *opts,
         pi->timestamp  = st.st_mtime;
     }
     closedir(d);
+    *out = arr;
     return count;
 }
 
@@ -70,7 +73,7 @@ static void print_table(const char *dir, const ProgramInfo *p, int count) {
 
     printf("  Programs in %s:\n\n", dir);
     printf("┌─");  for (size_t i = 0; i < w; i++) printf("─"); printf("─┬─────────────────────┬─────────────┐\n");
-    printf("│ %-*s │ Installed           │ Size        │\n", (int)w, "Program");
+    printf("│ " COLOR_BLUE "%-*s" COLOR_RESET " │ " COLOR_BLUE "Installed" COLOR_RESET "           │ " COLOR_BLUE "Size" COLOR_RESET "        │\n", (int)w, "Program");
     printf("├─");  for (size_t i = 0; i < w; i++) printf("─"); printf("─┼─────────────────────┼─────────────┤\n");
     for (int i = 0; i < count; i++)
         printf("│ %-*s │ %s │ %11s │\n", (int)w, p[i].name, p[i].date, p[i].size);
@@ -82,9 +85,9 @@ void cmd_list(const ListOptions *opts) {
     char dir[MAX_PATH];
     get_install_dir(dir, sizeof(dir));
 
-    ProgramInfo programs[256];
-    int count = collect_programs(dir, opts, programs, 256);
-    if (count <= 0) { printf("No programs installed\n"); return; }
+    ProgramInfo *programs = NULL;
+    int count = collect_programs(dir, opts, &programs);
+    if (count <= 0) { printf("No programs installed\n"); if (programs) free(programs); return; }
 
     int (*cmp)(const void *, const void *) = cmp_name;
     if (opts) {
@@ -93,8 +96,9 @@ void cmd_list(const ListOptions *opts) {
     }
     qsort(programs, count, sizeof(*programs), cmp);
 
-    if (opts && opts->json_output) { print_json(programs, count); return; }
-    print_table(dir, programs, count);
+    if (opts && opts->json_output) print_json(programs, count);
+    else                           print_table(dir, programs, count);
+    free(programs);
 }
 
 void cmd_search(const char *term) {

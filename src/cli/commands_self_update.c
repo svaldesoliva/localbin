@@ -36,7 +36,7 @@ void cmd_self_update(int manual_mode) {
     else
         printf("  Updating localbin (could not fetch remote version)\n");
 
-    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" | bash", url_install);
+    snprintf(cmd, sizeof(cmd), "curl -fSL -# \"%s\" | bash", url_install);
     if (system(cmd) != 0) {
         fprintf(stderr, "  Error: update failed\n");
         return;
