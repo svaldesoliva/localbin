@@ -31,3 +31,6 @@ test_*
 # Backup files
 *.bak
 *.backup
+
+
+localbin
