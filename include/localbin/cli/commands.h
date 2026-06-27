@@ -9,6 +9,8 @@ void cmd_install_with_options(const char *src_path, const char *version,
                               const char *pre_hook, const char *post_hook);
 void cmd_remove(const char *name);
 void cmd_update(const char *name, const char *src_path);
+void cmd_which(const char *name);
+void cmd_rename(const char *old_name, const char *new_name);
 void cmd_list(const ListOptions *opts);
 void cmd_search(const char *term);
 void cmd_info(const char *name);

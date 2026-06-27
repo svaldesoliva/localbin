@@ -1,7 +1,7 @@
 #include "localbin/security/checksum.h"
+#include "localbin/security/sha256.h"
 #include "localbin/core/core.h"
 #include "localbin/storage/metadata.h"
-#include <CommonCrypto/CommonDigest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,20 +12,18 @@ int checksum_calculate_sha256(const char *filepath, char *out, size_t out_size) 
     FILE *f = fopen(filepath, "rb");
     if (!f) return -1;
 
-    CC_SHA256_CTX ctx;
-    CC_SHA256_Init(&ctx);
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
 
-    unsigned char buf[65536];
+    uint8_t buf[65536];
     size_t n;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0)
-        CC_SHA256_Update(&ctx, buf, (CC_LONG)n);
+        sha256_update(&ctx, buf, n);
     fclose(f);
 
-    unsigned char hash[CC_SHA256_DIGEST_LENGTH];
-    CC_SHA256_Final(hash, &ctx);
-
-    for (int i = 0; i < CC_SHA256_DIGEST_LENGTH; i++)
-        sprintf(out + i * 2, "%02x", hash[i]);
+    uint8_t digest[32];
+    sha256_final(&ctx, digest);
+    for (int i = 0; i < 32; i++) sprintf(out + i * 2, "%02x", digest[i]);
     out[64] = '\0';
     return 0;
 }
@@ -53,7 +51,7 @@ int checksum_verify_all(void) {
         int r = checksum_verify_file(path, programs[i].checksum_sha256);
         if      (r == 0) printf("  ✓ %s\n", programs[i].name);
         else if (r == 1) { printf("  ✗ %s  (checksum mismatch)\n", programs[i].name); errors++; }
-        else             { printf("  ? %s  (could not verify)\n", programs[i].name);   errors++; }
+        else             { printf("  ? %s  (could not verify)\n",   programs[i].name); errors++; }
     }
 
     metadata_free_list(programs);

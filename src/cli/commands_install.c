@@ -91,8 +91,9 @@ void cmd_install_with_options(const char *src_path, const char *version,
     strncpy(meta.version, version ? version : "1.0.0", sizeof(meta.version) - 1);
 
     char abs_src[MAX_PATH];
+    const char *path_to_resolve = downloaded[0] ? downloaded : src_path;
     strncpy(meta.source_path,
-            realpath(src_path, abs_src) ? abs_src : src_path,
+            realpath(path_to_resolve, abs_src) ? abs_src : src_path,
             sizeof(meta.source_path) - 1);
 
     strncpy(meta.alias,            alias     ? alias     : "", sizeof(meta.alias) - 1);

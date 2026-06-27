@@ -85,11 +85,16 @@ int main(int argc, char *argv[]) {
         cmd_info(argv[2]);
     }
     else if (strcmp(cmd, "search") == 0) {
-        if (argc != 3) {
-            fprintf(stderr, "Uso: %s search <término>\n", argv[0]);
-            return 1;
-        }
+        if (argc != 3) { fprintf(stderr, "Usage: %s search <term>\n", argv[0]); return 1; }
         cmd_search(argv[2]);
+    }
+    else if (strcmp(cmd, "which") == 0) {
+        if (argc != 3) { fprintf(stderr, "Usage: %s which <name>\n", argv[0]); return 1; }
+        cmd_which(argv[2]);
+    }
+    else if (strcmp(cmd, "rename") == 0) {
+        if (argc != 4) { fprintf(stderr, "Usage: %s rename <old> <new>\n", argv[0]); return 1; }
+        cmd_rename(argv[2], argv[3]);
     }
     else if (strcmp(cmd, "verify") == 0) {
         if (argc == 2 || (argc == 3 && strcmp(argv[2], "--all") == 0)) {
@@ -97,7 +102,7 @@ int main(int argc, char *argv[]) {
         } else if (argc == 3) {
             cmd_verify(argv[2]);
         } else {
-            fprintf(stderr, "Uso: %s verify [<nombre>|--all]\n", argv[0]);
+            fprintf(stderr, "Usage: %s verify [<name>|--all]\n", argv[0]);
             return 1;
         }
     }
@@ -108,16 +113,12 @@ int main(int argc, char *argv[]) {
         cmd_setup();
     }
     else if (strcmp(cmd, "self-update") == 0 || strcmp(cmd, "selfupdate") == 0) {
-        int manual_mode = 0;
+        int manual = 0;
         for (int i = 2; i < argc; i++) {
-            if (strcmp(argv[i], "--manual") == 0) {
-                manual_mode = 1;
-            } else {
-                fprintf(stderr, "Opción inválida para self-update: %s\n", argv[i]);
-                return 1;
-            }
+            if (strcmp(argv[i], "--manual") == 0) manual = 1;
+            else { fprintf(stderr, "Unknown option: %s\n", argv[i]); return 1; }
         }
-        cmd_self_update(manual_mode);
+        cmd_self_update(manual);
     }
     else if (strcmp(cmd, "version") == 0 || strcmp(cmd, "-v") == 0 || strcmp(cmd, "--version") == 0) {
         print_version();
@@ -126,8 +127,8 @@ int main(int argc, char *argv[]) {
         print_help(argv[0]);
     }
     else {
-        fprintf(stderr, "Comando desconocido: %s\n", cmd);
-        fprintf(stderr, "Usa '%s help' para ver los comandos disponibles\n", argv[0]);
+        fprintf(stderr, "Unknown command: %s\n", cmd);
+        fprintf(stderr, "Run '%s help' for usage\n", argv[0]);
         return 1;
     }
     

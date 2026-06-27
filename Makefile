@@ -1,7 +1,7 @@
 CC      = gcc
 CPPFLAGS = -I$(abspath $(dir $(lastword $(MAKEFILE_LIST))))/include
 CFLAGS  = -Wall -Wextra -O2 -std=c11
-LDFLAGS = -framework Security -framework CoreFoundation
+LDFLAGS =
 TARGET  = localbin
 BINDIR  = $(HOME)/.localbin
 
@@ -9,6 +9,7 @@ SRCS = src/app/main.c \
        src/core/paths.c \
        src/core/utils.c \
        src/storage/metadata.c \
+       src/security/sha256.c \
        src/security/checksum.c \
        src/cli/commands_install.c \
        src/cli/commands_list.c \

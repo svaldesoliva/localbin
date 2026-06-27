@@ -20,6 +20,8 @@ void print_help(const char *prog) {
     puts("                      [--pre-update-hook S] [--post-update-hook S]");
     puts("  update  <name> <file>");
     puts("  remove  <name>");
+    puts("  rename  <old> <new>");
+    puts("  which   <name>");
     puts("  list    [--sort name|date|size] [--json]");
     puts("  info    <name>");
     puts("  search  <term>");

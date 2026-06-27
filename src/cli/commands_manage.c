@@ -158,3 +158,35 @@ void cmd_verify(const char *name) {
 }
 
 void cmd_verify_all(void) { checksum_verify_all(); }
+
+void cmd_which(const char *name) {
+    char install_dir[MAX_PATH];
+    get_install_dir(install_dir, sizeof(install_dir));
+    char path[MAX_PATH];
+    snprintf(path, sizeof(path), "%s/%s", install_dir, name);
+    if (!file_exists(path)) { fprintf(stderr, "Error: '%s' not installed\n", name); return; }
+    printf("%s\n", path);
+}
+
+void cmd_rename(const char *old_name, const char *new_name) {
+    char install_dir[MAX_PATH];
+    get_install_dir(install_dir, sizeof(install_dir));
+
+    char old_path[MAX_PATH], new_path[MAX_PATH];
+    snprintf(old_path, sizeof(old_path), "%s/%s", install_dir, old_name);
+    snprintf(new_path, sizeof(new_path), "%s/%s", install_dir, new_name);
+
+    if (!file_exists(old_path)) { fprintf(stderr, "Error: '%s' not installed\n", old_name); return; }
+    if (file_exists(new_path))  { fprintf(stderr, "Error: '%s' already exists\n", new_name); return; }
+
+    if (rename(old_path, new_path) != 0) { fprintf(stderr, "Error: rename failed\n"); return; }
+
+    ProgramMetadata meta = {0};
+    if (metadata_load(old_name, &meta) == 0) {
+        metadata_delete(old_name);
+        strncpy(meta.name, new_name, sizeof(meta.name) - 1);
+        metadata_save(&meta);
+    }
+    printf("  Renamed: %s -> %s\n", old_name, new_name);
+}
+

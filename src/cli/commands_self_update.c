@@ -5,43 +5,41 @@
 #include <string.h>
 
 void cmd_self_update(int manual_mode) {
-    const char *repo_raw_install = "https://raw.githubusercontent.com/svaldesoliva/localbin/main/install.sh";
-    const char *repo_raw_version = "https://raw.githubusercontent.com/svaldesoliva/localbin/main/include/localbin/app/version.h";
-    char latest_version[64] = {0};
-    char cmd[4096];
+    const char *url_version =
+        "https://raw.githubusercontent.com/svaldesoliva/localbin/main/include/localbin/app/version.h";
+    const char *url_install =
+        "https://raw.githubusercontent.com/svaldesoliva/localbin/main/install.sh";
 
-    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" | awk -F'\"' '/^#define[[:space:]]+LOCALBIN_VERSION[[:space:]]+\"/{print $2; exit}'", repo_raw_version);
+    /* Fetch the remote version string */
+    char latest[64] = {0};
+    char cmd[4096];
+    snprintf(cmd, sizeof(cmd),
+        "curl -fsSL \"%s\" | awk -F'\"' '/^#define[[:space:]]+LOCALBIN_VERSION[[:space:]]+\"/{print $2; exit}'",
+        url_version);
     FILE *f = popen(cmd, "r");
     if (f) {
-        if (fgets(latest_version, sizeof(latest_version), f)) {
-            size_t n = strlen(latest_version);
-            while (n > 0 && (latest_version[n - 1] == '\n' || latest_version[n - 1] == '\r' || latest_version[n - 1] == ' ')) {
-                latest_version[--n] = '\0';
-            }
+        if (fgets(latest, sizeof(latest), f)) {
+            /* Strip trailing whitespace */
+            for (int n = strlen(latest) - 1; n >= 0 && (latest[n] == '\n' || latest[n] == '\r' || latest[n] == ' '); n--)
+                latest[n] = '\0';
         }
         pclose(f);
     }
 
-    if (!manual_mode && latest_version[0] != '\0' && strcmp(LOCALBIN_VERSION, latest_version) == 0) {
-        printf("localbin ya está actualizado (v%s)\n", LOCALBIN_VERSION);
+    if (!manual_mode && latest[0] && strcmp(LOCALBIN_VERSION, latest) == 0) {
+        printf("  localbin %s is already up to date\n", LOCALBIN_VERSION);
         return;
     }
 
-    if (manual_mode) {
-        printf("Actualización manual forzada\n");
-    } else {
-        printf("Buscando actualizaciones...\n");
-    }
-    if (latest_version[0] != '\0') {
-        printf("Versión disponible: %s\n", latest_version);
-    }
+    if (latest[0])
+        printf("  %s -> %s\n", LOCALBIN_VERSION, latest);
+    else
+        printf("  Updating localbin (could not fetch remote version)\n");
 
-    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" | bash", repo_raw_install);
-    int rc = system(cmd);
-    if (rc != 0) {
-        fprintf(stderr, "Error: no se pudo actualizar localbin\n");
+    snprintf(cmd, sizeof(cmd), "curl -fsSL \"%s\" | bash", url_install);
+    if (system(cmd) != 0) {
+        fprintf(stderr, "  Error: update failed\n");
         return;
     }
-
-    printf("localbin actualizado correctamente\n");
+    printf("  Updated. Restart your shell.\n");
 }
