@@ -64,8 +64,8 @@ static int from_json(const char *j, ProgramMetadata *m) {
     for (size_t i = 0; i < sizeof(fields)/sizeof(*fields); i++) {
         const char *p = strstr(j, fields[i].key);
         if (!p) continue;
-        p = strchr(p, '"'); if (!p) continue;   /* skip key */
-        p = strchr(p + 1, '"'); if (!p) continue; /* opening quote of value */
+        p += strlen(fields[i].key);             /* skip key */
+        p = strchr(p, '"'); if (!p) continue;   /* opening quote of value */
         p++;
         char fmt[32];
         snprintf(fmt, sizeof(fmt), "%%%zu[^\"]", fields[i].size - 1);

@@ -75,7 +75,8 @@ int check_path(void) {
     /* Walk PATH without modifying it — compare segment by segment. */
     const char *p = path_env;
     while (*p) {
-        const char *end = strchrnul(p, ':');
+        const char *end = strchr(p, ':');
+        if (!end) end = p + strlen(p);
         size_t len = (size_t)(end - p);
         if (len == strlen(install_dir) && memcmp(p, install_dir, len) == 0)
             return 1;
