@@ -27,8 +27,9 @@ void print_help(const char *prog) {
     puts("  search  <term>");
     puts("  verify  [<name>|--all]");
     puts("  doctor");
-    puts("  setup");
-    puts("  self-update [--manual]");
+    printf("  setup\n");
+    printf("  completions <bash|zsh|fish>\n");
+    printf("  self-update [--manual]\n");
     puts("  version");
     puts("  help");
 }

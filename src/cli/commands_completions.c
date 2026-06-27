@@ -1,0 +1,121 @@
+#include "localbin/cli/commands.h"
+#include <stdio.h>
+#include <string.h>
+
+static const char *zsh_script =
+"#compdef localbin\n\n"
+"_localbin() {\n"
+"    local -a commands\n"
+"    commands=(\n"
+"        'install:Install a binary from a file or URL'\n"
+"        'update:Update a binary with a new file'\n"
+"        'remove:Remove a binary'\n"
+"        'rename:Rename a binary'\n"
+"        'which:Show the path to an installed binary'\n"
+"        'list:List all installed binaries'\n"
+"        'info:Show metadata for a binary'\n"
+"        'search:Search installed binaries'\n"
+"        'verify:Verify checksums of installed binaries'\n"
+"        'doctor:Run health check on localbin installation'\n"
+"        'setup:Set up localbin in the current shell'\n"
+"        'self-update:Update the localbin executable itself'\n"
+"        'completions:Generate shell completion script'\n"
+"        'version:Show version'\n"
+"        'help:Show help'\n"
+"    )\n\n"
+"    if (( CURRENT == 2 )); then\n"
+"        _describe 'commands' commands\n"
+"    elif (( CURRENT == 3 )); then\n"
+"        case $words[2] in\n"
+"            update|remove|rm|rename|which|info|verify)\n"
+"                local -a installed_bins\n"
+"                installed_bins=($HOME/.localbin/*(:t))\n"
+"                _describe 'installed binaries' installed_bins\n"
+"                ;;\n"
+"            install)\n"
+"                _files\n"
+"                ;;\n"
+"        esac\n"
+"    fi\n"
+"}\n\n"
+"_localbin \"$@\"\n";
+
+static const char *bash_script =
+"_localbin_completions() {\n"
+"    local cur prev words cword\n"
+"    if type _init_completion >/dev/null 2>&1; then\n"
+"        _init_completion || return\n"
+"    else\n"
+"        COMPREPLY=()\n"
+"        cur=\"${COMP_WORDS[COMP_CWORD]}\"\n"
+"        words=(\"${COMP_WORDS[@]}\")\n"
+"        cword=$COMP_CWORD\n"
+"    fi\n\n"
+"    local commands=\"install update remove rm rename which list info search verify doctor setup self-update completions version help\"\n\n"
+"    if (( cword == 1 )); then\n"
+"        COMPREPLY=( $(compgen -W \"$commands\" -- \"$cur\") )\n"
+"    elif (( cword == 2 )); then\n"
+"        case \"${words[1]}\" in\n"
+"            update|remove|rm|rename|which|info|verify)\n"
+"                local installed_bins=$(ls -1 $HOME/.localbin 2>/dev/null)\n"
+"                COMPREPLY=( $(compgen -W \"$installed_bins\" -- \"$cur\") )\n"
+"                ;;\n"
+"            install)\n"
+"                COMPREPLY=( $(compgen -f -- \"$cur\") )\n"
+"                ;;\n"
+"        esac\n"
+"    fi\n"
+"}\n"
+"complete -F _localbin_completions localbin\n";
+
+static const char *fish_script =
+"function __fish_localbin_needs_command\n"
+"    set -l cmd (commandline -opc)\n"
+"    if test (count $cmd) -eq 1\n"
+"        return 0\n"
+"    end\n"
+"    return 1\n"
+"end\n\n"
+"function __fish_localbin_using_command\n"
+"    set -l cmd (commandline -opc)\n"
+"    if test (count $cmd) -gt 1\n"
+"        if test $cmd[2] = $argv[1]\n"
+"            return 0\n"
+"        end\n"
+"    end\n"
+"    return 1\n"
+"end\n\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a install -d 'Install a binary'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a update -d 'Update a binary'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a remove -d 'Remove a binary'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a rm -d 'Remove a binary'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a rename -d 'Rename a binary'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a which -d 'Show binary path'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a list -d 'List binaries'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a info -d 'Show binary metadata'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a search -d 'Search binaries'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a verify -d 'Verify checksums'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a doctor -d 'Run health check'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a setup -d 'Setup shell'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a self-update -d 'Update localbin'\n"
+"complete -f -c localbin -n '__fish_localbin_needs_command' -a completions -d 'Generate completions'\n\n"
+"# Commands that take an installed binary\n"
+"complete -f -c localbin -n '__fish_localbin_using_command update' -a '(ls -1 ~/.localbin 2>/dev/null)'\n"
+"complete -f -c localbin -n '__fish_localbin_using_command remove' -a '(ls -1 ~/.localbin 2>/dev/null)'\n"
+"complete -f -c localbin -n '__fish_localbin_using_command rm' -a '(ls -1 ~/.localbin 2>/dev/null)'\n"
+"complete -f -c localbin -n '__fish_localbin_using_command rename' -a '(ls -1 ~/.localbin 2>/dev/null)'\n"
+"complete -f -c localbin -n '__fish_localbin_using_command which' -a '(ls -1 ~/.localbin 2>/dev/null)'\n"
+"complete -f -c localbin -n '__fish_localbin_using_command info' -a '(ls -1 ~/.localbin 2>/dev/null)'\n"
+"complete -f -c localbin -n '__fish_localbin_using_command verify' -a '(ls -1 ~/.localbin 2>/dev/null)'\n";
+
+void cmd_completions(const char *shell) {
+    if (strcmp(shell, "bash") == 0) {
+        printf("%s", bash_script);
+    } else if (strcmp(shell, "zsh") == 0) {
+        printf("%s", zsh_script);
+    } else if (strcmp(shell, "fish") == 0) {
+        printf("%s", fish_script);
+    } else {
+        fprintf(stderr, "Error: unsupported shell '%s'. Supported: bash, zsh, fish\n", shell);
+    }
+}

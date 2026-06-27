@@ -112,6 +112,13 @@ int main(int argc, char *argv[]) {
     else if (strcmp(cmd, "setup") == 0) {
         cmd_setup();
     }
+    else if (strcmp(cmd, "completions") == 0) {
+        if (argc != 3) {
+            fprintf(stderr, "Usage: %s completions <bash|zsh|fish>\n", argv[0]);
+            return 1;
+        }
+        cmd_completions(argv[2]);
+    }
     else if (strcmp(cmd, "self-update") == 0 || strcmp(cmd, "selfupdate") == 0) {
         int manual = 0;
         for (int i = 2; i < argc; i++) {

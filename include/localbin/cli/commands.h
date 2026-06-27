@@ -22,5 +22,6 @@ void cmd_self_update(int manual_mode);
 
 void print_help(const char *prog_name);
 void print_version(void);
+void cmd_completions(const char *shell);
 
 #endif // COMMANDS_H

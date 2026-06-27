@@ -17,6 +17,7 @@ SRCS = src/app/main.c \
        src/cli/commands_info.c \
        src/cli/commands_system.c \
        src/cli/commands_help.c \
+       src/cli/commands_completions.c \
        src/cli/commands_self_update.c
 
 OBJS = $(SRCS:.c=.o)
